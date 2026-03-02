@@ -4,7 +4,6 @@ import { getAllUsers, findUserById } from "./userService";
 
 export function broadcast(message: Message): void {
     const serialised = JSON.stringify(message);
-
     getAllUsers().forEach((connectedUser) => {
         connectedUser.ws.send(serialised);
     });
@@ -13,7 +12,9 @@ export function broadcast(message: Message): void {
 export function sendPrivateMessage(
     sender: User,
     receiverId: number,
-    text: string
+    text: string,
+    audioData?: string,
+    duration?: number,
 ): void {
     const receiver = findUserById(receiverId);
 
@@ -22,12 +23,13 @@ export function sendPrivateMessage(
     }
 
     const directMessage: Message = {
-        type: "PRIVATE_CHAT",
+        type: audioData ? "PRIVATE_VOICE" : "PRIVATE_CHAT",
         payload: {
             from: sender.id,
             username: sender.username,
             text,
             timestamp: new Date().toISOString(),
+            ...(audioData && { audioData, duration: duration ?? 0 }),
         },
     };
 

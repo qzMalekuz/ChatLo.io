@@ -20,6 +20,9 @@ interface ChatState {
     setUsername: (username: string) => void;
     sendChat: (text: string) => void;
     sendPrivateChat: (toId: number, text: string) => void;
+    sendVoiceChat: (audioData: string, duration: number) => void;
+    sendRoomVoice: (audioData: string, duration: number) => void;
+    sendPrivateVoice: (toId: number, audioData: string, duration: number) => void;
     joinRoom: (room: string) => void;
     leaveRoom: () => void;
     sendRoomChat: (text: string) => void;
@@ -222,6 +225,46 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                         break;
                     }
 
+                    case 'VOICE_CHAT': {
+                        const v = payload as { id: number; username: string; audioData: string; duration: number; timestamp: string };
+                        setGlobalMessages(prev => [...prev, {
+                            id: nextId(), type: 'CHAT', userId: v.id, username: v.username,
+                            text: '🎤 Voice message', timestamp: v.timestamp, isSelf: v.id === me?.id,
+                            audioUrl: v.audioData,
+                        }]);
+                        break;
+                    }
+
+                    case 'ROOM_VOICE': {
+                        const v = payload as { id: number; username: string; audioData: string; duration: number; timestamp: string };
+                        const room = currentRoomRef.current;
+                        if (room) {
+                            setRoomMessages(prev => ({
+                                ...prev,
+                                [room]: [...(prev[room] || []), {
+                                    id: nextId(), type: 'ROOM_CHAT', userId: v.id, username: v.username,
+                                    text: '🎤 Voice message', timestamp: v.timestamp, isSelf: v.id === me?.id,
+                                    audioUrl: v.audioData,
+                                }],
+                            }));
+                        }
+                        break;
+                    }
+
+                    case 'PRIVATE_VOICE': {
+                        const v = payload as { from: number; username: string; audioData: string; duration: number; timestamp: string };
+                        const otherId = v.from === me?.id ? 0 : v.from;
+                        setPrivateMessages(prev => ({
+                            ...prev,
+                            [otherId]: [...(prev[otherId] || []), {
+                                id: nextId(), type: 'PRIVATE_CHAT', userId: v.from, username: v.username,
+                                text: '🎤 Voice message', timestamp: v.timestamp, isSelf: v.from === me?.id,
+                                audioUrl: v.audioData,
+                            }],
+                        }));
+                        break;
+                    }
+
                     case 'USER_LIST': {
                         const list = payload as { users: OnlineUser[] };
                         setOnlineUsers(list.users);
@@ -332,12 +375,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const toggleMute = useCallback((chatId: string) => {
         setMutedChats(prev => prev.includes(chatId) ? prev.filter(id => id !== chatId) : [...prev, chatId]);
     }, []);
+    const sendVoiceChat = useCallback((audioData: string, duration: number) => {
+        sendMessage('VOICE_CHAT', { audioData, duration });
+    }, [sendMessage]);
+    const sendRoomVoice = useCallback((audioData: string, duration: number) => {
+        sendMessage('ROOM_VOICE', { audioData, duration });
+    }, [sendMessage]);
+    const sendPrivateVoice = useCallback((toId: number, audioData: string, duration: number) => {
+        sendMessage('PRIVATE_VOICE', { to: toId, audioData, duration });
+    }, [sendMessage]);
 
     return (
         <ChatContext.Provider value={{
             socket: socketRef.current, connected, currentUser, userProfile, onlineUsers,
             globalMessages, privateMessages, roomMessages, currentRoom, roomMembers,
             typingUsers, errors, mutedChats, selectedUserIdForProfile, sendMessage, setUsername, sendChat, sendPrivateChat,
+            sendVoiceChat, sendRoomVoice, sendPrivateVoice,
             joinRoom, leaveRoom, sendRoomChat, sendTypingStart, sendTypingStop,
             requestUsers, requestRoomMembers, dismissError, setUserStatus, setUserAvatar, setUserBanner, toggleMute, setSelectedUserProfile, addLocalMessage,
         }}>

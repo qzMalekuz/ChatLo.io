@@ -220,6 +220,7 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
     const {
         globalMessages, roomMessages, privateMessages, currentRoom,
         sendChat, sendRoomChat, sendPrivateChat,
+        sendVoiceChat, sendRoomVoice, sendPrivateVoice,
         sendTypingStart, sendTypingStop, typingUsers, onlineUsers,
         mutedChats, toggleMute, setSelectedUserProfile, addLocalMessage,
         currentUser,
@@ -318,17 +319,25 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
     }), [currentUser]);
 
     const handleSend = useCallback(() => {
-        // ── Voice message ─────────────────────────────────────────────────────
+        // ── Voice message — convert blob → base64 → send over WebSocket ────────
         if (audioUrl && audioBlob) {
-            addLocalMessage(currentChatId, makeLocal({ audioUrl, text: '[🎤 Voice message]' }));
-            // Send a text placeholder so other users know a voice msg was sent
-            const placeholder = '🎤 Voice message';
-            if (chatMode === 'room' && currentRoom) sendRoomChat(placeholder);
-            else if (chatMode === 'private' && privateChatUserId) sendPrivateChat(privateChatUserId, placeholder);
-            else sendChat(placeholder);
+            const localUrl = audioUrl; // capture before it's cleared
+            const blob = audioBlob;
+            const duration = recordingSeconds;
+            // Insert optimistic player for sender immediately
+            addLocalMessage(currentChatId, makeLocal({ audioUrl: localUrl, text: '🎤 Voice message' }));
             setAudioUrl(null);
             setAudioBlob(null);
             setRecordingSeconds(0);
+            // Convert blob → base64 data URI then broadcast
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const audioData = reader.result as string; // data:audio/webm;base64,...
+                if (chatMode === 'room' && currentRoom) sendRoomVoice(audioData, duration);
+                else if (chatMode === 'private' && privateChatUserId) sendPrivateVoice(privateChatUserId, audioData, duration);
+                else sendVoiceChat(audioData, duration);
+            };
+            reader.readAsDataURL(blob);
             return;
         }
 
@@ -357,7 +366,7 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
         setInput('');
         if (isTypingRef.current) { isTypingRef.current = false; sendTypingStop(); }
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-    }, [audioUrl, audioBlob, pendingMedia, input, chatMode, currentRoom, privateChatUserId, currentChatId, sendChat, sendRoomChat, sendPrivateChat, sendTypingStop, makeLocal, addLocalMessage]);
+    }, [audioUrl, audioBlob, recordingSeconds, pendingMedia, input, chatMode, currentRoom, privateChatUserId, currentChatId, sendChat, sendRoomChat, sendPrivateChat, sendVoiceChat, sendRoomVoice, sendPrivateVoice, sendTypingStop, makeLocal, addLocalMessage]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }

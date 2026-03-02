@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatContext } from '../context/ChatContext';
 
@@ -8,17 +8,38 @@ interface Props {
     onOpenProfile?: () => void;
 }
 
-// ─── New Group Modal ──────────────────────────────────────────────────────────
+// ─── New Group Modal (2-step: name → people picker) ───────────────────────────
 function NewGroupModal({ onClose, onSelectChat }: { onClose: () => void; onSelectChat: (id: string, name: string) => void }) {
+    const { onlineUsers, currentUser, sendMessage } = useChatContext();
+    const [step, setStep] = useState<1 | 2>(1);
     const [roomName, setRoomName] = useState('');
+    const [selected, setSelected] = useState<Set<number>>(new Set());
     const inputRef = useRef<HTMLInputElement>(null);
-    useEffect(() => { inputRef.current?.focus(); }, []);
+    useEffect(() => { if (step === 1) setTimeout(() => inputRef.current?.focus(), 50); }, [step]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const others = onlineUsers.filter(u => u.id !== currentUser?.id);
+
+    const handleNext = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!roomName.trim()) return;
+        setStep(2);
+    };
+
+    const toggleUser = (id: number) => {
+        setSelected(prev => {
+            const n = new Set(prev);
+            n.has(id) ? n.delete(id) : n.add(id);
+            return n;
+        });
+    };
+
+    const handleCreate = () => {
         const name = roomName.trim().replace(/\s+/g, '-').toLowerCase();
         if (!name) return;
         onSelectChat(`room:${name}`, `#${name}`);
+        selected.forEach(uid => {
+            sendMessage('PRIVATE_CHAT', { to: uid, text: `📢 You've been invited to join group: #${name}` });
+        });
         onClose();
     };
 
@@ -34,38 +55,92 @@ function NewGroupModal({ onClose, onSelectChat }: { onClose: () => void; onSelec
                 exit={{ scale: 0.95, y: 20, opacity: 0 }}
                 transition={{ type: 'spring', damping: 28, stiffness: 350 }}
                 onClick={e => e.stopPropagation()}
-                className="w-full max-w-sm bg-bg-secondary border border-border rounded-2xl p-6 shadow-2xl space-y-4"
+                className="w-full max-w-sm bg-bg-secondary border border-border rounded-2xl p-6 shadow-2xl"
             >
-                <div className="flex items-center gap-3 mb-1">
-                    <div className="w-9 h-9 rounded-full bg-bg-input flex items-center justify-center text-text-dim">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 className="text-base font-semibold text-text-primary">Create Group</h2>
-                        <p className="text-xs text-text-dim">Enter a name for the group room</p>
-                    </div>
+                {/* Step indicator */}
+                <div className="flex items-center gap-2 mb-5">
+                    {[1, 2].map((s, i) => (
+                        <React.Fragment key={s}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s ? 'bg-accent text-bg-primary' : 'bg-bg-input text-text-dim'}`}>
+                                {s}
+                            </div>
+                            {i === 0 && (
+                                <div className={`flex-1 h-0.5 rounded-full transition-colors duration-300 ${step >= 2 ? 'bg-accent' : 'bg-border'}`} />
+                            )}
+                        </React.Fragment>
+                    ))}
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-3">
-                    <input
-                        ref={inputRef}
-                        value={roomName}
-                        onChange={e => setRoomName(e.target.value)}
-                        placeholder="e.g. design-team"
-                        maxLength={30}
-                        className="w-full px-4 py-2.5 rounded-xl bg-bg-input border border-border text-text-primary text-sm placeholder-text-dim focus:border-text-muted outline-none transition-colors"
-                    />
-                    <div className="flex gap-2">
-                        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-text-muted text-sm hover:bg-bg-hover transition-colors cursor-pointer">
-                            Cancel
-                        </button>
-                        <button type="submit" disabled={!roomName.trim()} className="flex-1 py-2.5 rounded-xl bg-accent text-bg-primary text-sm font-semibold hover:bg-accent-hover transition-colors cursor-pointer disabled:opacity-40">
-                            Create & Join
-                        </button>
-                    </div>
-                </form>
+
+                <AnimatePresence mode="wait">
+                    {step === 1 ? (
+                        <motion.div key="step1" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
+                            <h2 className="text-base font-semibold text-text-primary mb-1">Group Name</h2>
+                            <p className="text-xs text-text-dim mb-4">Name your group room</p>
+                            <form onSubmit={handleNext} className="space-y-3">
+                                <input
+                                    ref={inputRef}
+                                    value={roomName}
+                                    onChange={e => setRoomName(e.target.value)}
+                                    placeholder="e.g. design-team"
+                                    maxLength={30}
+                                    className="w-full px-4 py-2.5 rounded-xl bg-bg-input border border-border text-text-primary text-sm placeholder-text-dim focus:border-text-muted outline-none transition-colors"
+                                />
+                                <div className="flex gap-2">
+                                    <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-text-muted text-sm hover:bg-bg-hover cursor-pointer transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" disabled={!roomName.trim()} className="flex-1 py-2.5 rounded-xl bg-accent text-bg-primary text-sm font-semibold hover:bg-accent-hover cursor-pointer disabled:opacity-40 transition-colors">
+                                        Next →
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    ) : (
+                        <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}>
+                            <h2 className="text-base font-semibold text-text-primary mb-1">Add People</h2>
+                            <p className="text-xs text-text-dim mb-3">
+                                {selected.size > 0 ? `${selected.size} selected` : 'Select members to invite (optional)'}
+                            </p>
+                            <div className="space-y-1 max-h-52 overflow-y-auto mb-4">
+                                {others.length === 0 ? (
+                                    <p className="text-center text-text-dim text-sm py-3">No other users online</p>
+                                ) : others.map(u => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => toggleUser(u.id)}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors cursor-pointer text-left border
+                                            ${selected.has(u.id) ? 'bg-accent/10 border-accent/30' : 'hover:bg-bg-hover border-transparent'}`}
+                                    >
+                                        {u.avatarUrl ? (
+                                            <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-bg-card border border-border flex items-center justify-center text-sm font-semibold text-text-primary flex-shrink-0">
+                                                {u.username[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                        <span className="flex-1 text-sm text-text-primary truncate">{u.username}</span>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors
+                                            ${selected.has(u.id) ? 'border-accent bg-accent' : 'border-border bg-transparent'}`}>
+                                            {selected.has(u.id) && (
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="20 6 9 17 4 12" />
+                                                </svg>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setStep(1)} className="flex-1 py-2.5 rounded-xl border border-border text-text-muted text-sm hover:bg-bg-hover cursor-pointer transition-colors">
+                                    ← Back
+                                </button>
+                                <button onClick={handleCreate} className="flex-1 py-2.5 rounded-xl bg-accent text-bg-primary text-sm font-semibold hover:bg-accent-hover cursor-pointer transition-colors">
+                                    Create & Join
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
         </motion.div>
     );
