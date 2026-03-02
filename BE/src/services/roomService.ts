@@ -1,21 +1,20 @@
 import { Message, User } from "../types";
 import { findUserById } from "./userService";
 
-let rooms: Record<string, number[]> = {};
+// rooms: roomName → Set of userId
+const rooms: Record<string, Set<number>> = {};
 
 export function joinRoom(user: User, roomName: string): void {
     // Already in this room — ignore
-    if (user.room === roomName) return;
-
-    // Leave current room first if in one
-    if (user.room) leaveRoom(user);
+    if (user.rooms.includes(roomName)) return;
 
     if (!rooms[roomName]) {
-        rooms[roomName] = [];
+        rooms[roomName] = new Set();
     }
 
-    rooms[roomName].push(user.id);
-    user.room = roomName;
+    rooms[roomName].add(user.id);
+    user.rooms.push(roomName);
+    user.room = roomName;   // track last joined as primary (for backward compat)
 
     broadcastToRoom(roomName, {
         type: "ROOM_NOTIFICATION",
@@ -26,28 +25,34 @@ export function joinRoom(user: User, roomName: string): void {
     });
 }
 
-export function leaveRoom(user: User): void {
-    if (!user.room) return;
+export function leaveRoom(user: User, roomName?: string): void {
+    const target = roomName || user.room;
+    if (!target) return;
+    if (!user.rooms.includes(target)) return;
 
-    const currentRoom = user.room;
+    rooms[target]?.delete(user.id);
 
-    rooms[currentRoom] = rooms[currentRoom].filter(
-        (memberId) => memberId !== user.id
-    );
-
-    broadcastToRoom(currentRoom, {
+    broadcastToRoom(target, {
         type: "ROOM_NOTIFICATION",
         payload: {
-            message: `${user.username} left ${currentRoom}`,
+            message: `${user.username} left ${target}`,
             timestamp: new Date().toISOString(),
         },
     });
 
-    if (rooms[currentRoom].length === 0) {
-        delete rooms[currentRoom];
+    if (rooms[target] && rooms[target].size === 0) {
+        delete rooms[target];
     }
 
-    user.room = null;
+    user.rooms = user.rooms.filter(r => r !== target);
+    // Update primary room reference
+    user.room = user.rooms[user.rooms.length - 1] ?? null;
+}
+
+export function leaveAllRooms(user: User): void {
+    for (const room of [...user.rooms]) {
+        leaveRoom(user, room);
+    }
 }
 
 export function broadcastToRoom(roomName: string, message: Message): void {
@@ -64,10 +69,10 @@ export function broadcastToRoom(roomName: string, message: Message): void {
 export function getRoomMembers(roomName: string): { id: number; username: string }[] {
     if (!rooms[roomName]) return [];
 
-    return rooms[roomName]
-        .map((memberId) => {
-            const member = findUserById(memberId);
-            return member ? { id: member.id, username: member.username } : null;
-        })
-        .filter((m): m is { id: number; username: string } => m !== null);
+    const result: { id: number; username: string }[] = [];
+    rooms[roomName].forEach((memberId) => {
+        const member = findUserById(memberId);
+        if (member) result.push({ id: member.id, username: member.username });
+    });
+    return result;
 }

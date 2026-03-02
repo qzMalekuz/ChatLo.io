@@ -10,7 +10,8 @@ interface ChatState {
     globalMessages: ChatMessage[];
     privateMessages: Record<number, ChatMessage[]>;
     roomMessages: Record<string, ChatMessage[]>;
-    currentRoom: string | null;
+    currentRoom: string | null;        // kept for compat (last joined room)
+    joinedRooms: string[];             // all rooms the user is currently in
     roomMembers: OnlineUser[];
     typingUsers: Record<string, string[]>;
     errors: string[];
@@ -21,13 +22,13 @@ interface ChatState {
     sendChat: (text: string) => void;
     sendPrivateChat: (toId: number, text: string) => void;
     sendVoiceChat: (audioData: string, duration: number) => void;
-    sendRoomVoice: (audioData: string, duration: number) => void;
+    sendRoomVoice: (audioData: string, duration: number, room?: string) => void;
     sendPrivateVoice: (toId: number, audioData: string, duration: number) => void;
     joinRoom: (room: string) => void;
-    leaveRoom: () => void;
-    sendRoomChat: (text: string) => void;
-    sendTypingStart: () => void;
-    sendTypingStop: () => void;
+    leaveRoom: (room?: string) => void;
+    sendRoomChat: (text: string, room?: string) => void;
+    sendTypingStart: (room?: string) => void;
+    sendTypingStop: (room?: string) => void;
     requestUsers: () => void;
     requestRoomMembers: (room: string) => void;
     dismissError: (index: number) => void;
@@ -61,6 +62,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const [privateMessages, setPrivateMessages] = useState<Record<number, ChatMessage[]>>({});
     const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>({});
     const [currentRoom, setCurrentRoom] = useState<string | null>(null);
+    const [joinedRooms, setJoinedRooms] = useState<string[]>([]);
     const [roomMembers, setRoomMembers] = useState<OnlineUser[]>([]);
     const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({});
     const [errors, setErrors] = useState<string[]>([]);
@@ -75,9 +77,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
 
     const currentUserRef = useRef(currentUser);
-    const currentRoomRef = useRef(currentRoom);
     currentUserRef.current = currentUser;
-    currentRoomRef.current = currentRoom;
 
     const addError = useCallback((msg: string) => {
         setErrors(prev => [...prev, msg]);
@@ -120,7 +120,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 try {
                     msg = JSON.parse(event.data);
                 } catch {
-                    return; // ignore non-JSON messages (pong, etc.)
+                    return;
                 }
                 const { type, payload } = msg;
                 const me = currentUserRef.current;
@@ -196,12 +196,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'ROOM_NOTIFICATION': {
-                        const r = payload as { message: string; timestamp: string };
-                        const room = currentRoomRef.current;
-                        if (room) {
+                        // Backend now sends room name in payload
+                        const r = payload as { message: string; timestamp: string; room?: string };
+                        // Try to extract room from the message text as fallback
+                        const roomName = r.room ?? extractRoomFromNotification(r.message);
+                        if (roomName) {
                             setRoomMessages(prev => ({
                                 ...prev,
-                                [room]: [...(prev[room] || []), {
+                                [roomName]: [...(prev[roomName] || []), {
                                     id: nextId(), type: 'ROOM_NOTIFICATION', userId: 0, username: 'System',
                                     text: r.message, timestamp: r.timestamp, isSelf: false,
                                 }],
@@ -211,8 +213,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'ROOM_CHAT': {
-                        const c = payload as { id: number; username: string; text: string; timestamp: string };
-                        const room = currentRoomRef.current;
+                        const c = payload as { id: number; username: string; text: string; room?: string; timestamp: string };
+                        const room = c.room;
                         if (room) {
                             setRoomMessages(prev => ({
                                 ...prev,
@@ -236,8 +238,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'ROOM_VOICE': {
-                        const v = payload as { id: number; username: string; audioData: string; duration: number; timestamp: string };
-                        const room = currentRoomRef.current;
+                        const v = payload as { id: number; username: string; audioData: string; duration: number; room?: string; timestamp: string };
+                        const room = v.room;
                         if (room) {
                             setRoomMessages(prev => ({
                                 ...prev,
@@ -331,22 +333,38 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         sendMessage('PRIVATE_CHAT', { to: toId, text });
         setUserProfile(prev => ({ ...prev, messagesSent: prev.messagesSent + 1 }));
     }, [sendMessage]);
+
+    // Multi-room: join without evicting from other rooms
     const joinRoom = useCallback((room: string) => {
-        sendMessage('ROOM_JOIN', { room });
+        setJoinedRooms(prev => prev.includes(room) ? prev : [...prev, room]);
         setCurrentRoom(room);
+        sendMessage('ROOM_JOIN', { room });
         sendMessage('ROOM_MEMBERS', { room });
     }, [sendMessage]);
-    const leaveRoom = useCallback(() => {
-        sendMessage('ROOM_LEAVE', {});
-        setCurrentRoom(null);
-        setRoomMembers([]);
+
+    // leaveRoom: with specific room, or leave all if none given
+    const leaveRoom = useCallback((room?: string) => {
+        if (room) {
+            sendMessage('ROOM_LEAVE', { room });
+            setJoinedRooms(prev => {
+                const next = prev.filter(r => r !== room);
+                setCurrentRoom(next[next.length - 1] ?? null);
+                return next;
+            });
+        } else {
+            sendMessage('ROOM_LEAVE', {});
+            setJoinedRooms([]);
+            setCurrentRoom(null);
+            setRoomMembers([]);
+        }
     }, [sendMessage]);
-    const sendRoomChat = useCallback((text: string) => {
-        sendMessage('ROOM_CHAT', { text });
+
+    const sendRoomChat = useCallback((text: string, room?: string) => {
+        sendMessage('ROOM_CHAT', { text, ...(room ? { room } : {}) });
         setUserProfile(prev => ({ ...prev, messagesSent: prev.messagesSent + 1 }));
     }, [sendMessage]);
-    const sendTypingStart = useCallback(() => sendMessage('TYPING_START', {}), [sendMessage]);
-    const sendTypingStop = useCallback(() => sendMessage('TYPING_STOP', {}), [sendMessage]);
+    const sendTypingStart = useCallback((room?: string) => sendMessage('TYPING_START', room ? { room } : {}), [sendMessage]);
+    const sendTypingStop = useCallback((room?: string) => sendMessage('TYPING_STOP', room ? { room } : {}), [sendMessage]);
     const requestUsers = useCallback(() => sendMessage('GET_USERS', {}), [sendMessage]);
     const requestRoomMembers = useCallback((room: string) => sendMessage('ROOM_MEMBERS', { room }), [sendMessage]);
     const dismissError = useCallback((index: number) => setErrors(prev => prev.filter((_, i) => i !== index)), []);
@@ -378,8 +396,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const sendVoiceChat = useCallback((audioData: string, duration: number) => {
         sendMessage('VOICE_CHAT', { audioData, duration });
     }, [sendMessage]);
-    const sendRoomVoice = useCallback((audioData: string, duration: number) => {
-        sendMessage('ROOM_VOICE', { audioData, duration });
+    const sendRoomVoice = useCallback((audioData: string, duration: number, room?: string) => {
+        sendMessage('ROOM_VOICE', { audioData, duration, ...(room ? { room } : {}) });
     }, [sendMessage]);
     const sendPrivateVoice = useCallback((toId: number, audioData: string, duration: number) => {
         sendMessage('PRIVATE_VOICE', { to: toId, audioData, duration });
@@ -388,7 +406,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     return (
         <ChatContext.Provider value={{
             socket: socketRef.current, connected, currentUser, userProfile, onlineUsers,
-            globalMessages, privateMessages, roomMessages, currentRoom, roomMembers,
+            globalMessages, privateMessages, roomMessages, currentRoom, joinedRooms, roomMembers,
             typingUsers, errors, mutedChats, selectedUserIdForProfile, sendMessage, setUsername, sendChat, sendPrivateChat,
             sendVoiceChat, sendRoomVoice, sendPrivateVoice,
             joinRoom, leaveRoom, sendRoomChat, sendTypingStart, sendTypingStop,
@@ -397,4 +415,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             {children}
         </ChatContext.Provider>
     );
+}
+
+// Helper: extract room name from notification text like "alice joined design-team"
+function extractRoomFromNotification(msg: string): string | null {
+    const m = msg.match(/\b(joined|left)\s+(\S+)$/);
+    return m ? m[2] : null;
 }

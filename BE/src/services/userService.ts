@@ -13,6 +13,7 @@ export function addUser(ws: WebSocket, username?: string): User {
         status: "",
         avatarUrl: null,
         room: null,
+        rooms: [],
         ws,
         isAlive: true,
         lastMessageTimestamps: [],

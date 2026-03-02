@@ -301,8 +301,140 @@ function InviteCard({
     );
 }
 
+// ─── Camera Modal (live getUserMedia preview + capture) ─────────────────────
+function CameraModal({ onCapture, onClose }: { onCapture: (dataUrl: string) => void; onClose: () => void }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const [captured, setCaptured] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+    // Start stream on mount
+    useEffect(() => {
+        let active = true;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+            .then(stream => {
+                if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.play().catch(() => { });
+                }
+            })
+            .catch(() => setError('Camera access denied or unavailable'));
+        return () => {
+            active = false;
+            streamRef.current?.getTracks().forEach(t => t.stop());
+        };
+    }, []);
+
+    const capture = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const v = videoRef.current;
+        const c = canvasRef.current;
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        c.getContext('2d')?.drawImage(v, 0, 0);
+        setCaptured(c.toDataURL('image/jpeg', 0.9));
+        // Stop the stream preview
+        streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+
+    const retake = () => {
+        setCaptured(null);
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+            .then(stream => {
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.play().catch(() => { });
+                }
+            })
+            .catch(() => setError('Camera access denied'));
+    };
+
+    const accept = () => {
+        if (captured) { onCapture(captured); onClose(); }
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={onClose}
+        >
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+                onClick={e => e.stopPropagation()}
+                className="w-full max-w-md bg-black rounded-2xl overflow-hidden border border-border shadow-2xl"
+            >
+                {/* Viewfinder */}
+                <div className="relative aspect-[4/3] bg-black">
+                    {error ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-dim">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                <circle cx="12" cy="13" r="4" />
+                                <line x1="2" y1="2" x2="22" y2="22" />
+                            </svg>
+                            <p className="text-sm text-text-dim">{error}</p>
+                        </div>
+                    ) : captured ? (
+                        <img src={captured} alt="captured" className="w-full h-full object-cover" />
+                    ) : (
+                        <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
+                    )}
+                    <canvas ref={canvasRef} className="hidden" />
+
+                    {/* Close button */}
+                    <button
+                        onClick={onClose}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors cursor-pointer"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Controls */}
+                <div className="p-4 flex items-center justify-center gap-4 bg-black">
+                    {!captured ? (
+                        <motion.button
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.93 }}
+                            onClick={capture}
+                            disabled={!!error}
+                            className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center cursor-pointer disabled:opacity-40"
+                        >
+                            <div className="w-12 h-12 rounded-full bg-white" />
+                        </motion.button>
+                    ) : (
+                        <>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.93 }}
+                                onClick={retake}
+                                className="flex-1 py-2.5 rounded-xl border border-border text-white text-sm font-medium hover:bg-white/10 cursor-pointer transition-colors"
+                            >
+                                Retake
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.93 }}
+                                onClick={accept}
+                                className="flex-1 py-2.5 rounded-xl bg-accent text-bg-primary text-sm font-semibold hover:bg-accent-hover cursor-pointer transition-colors"
+                            >
+                                Use Photo
+                            </motion.button>
+                        </>
+                    )}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+}
+
+
 export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props) {
     const {
         globalMessages, roomMessages, privateMessages, currentRoom,
@@ -326,9 +458,11 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
     // file inputs
     const photoInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
     // pending file for inline preview before send
     const [pendingMedia, setPendingMedia] = useState<{ type: 'image' | 'video' | 'file'; url: string; name: string; size: string } | null>(null);
+
+    // camera modal
+    const [showCamera, setShowCamera] = useState(false);
 
     // emoji picker
     const [showEmoji, setShowEmoji] = useState(false);
@@ -555,7 +689,7 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
     const ATTACHMENT_OPTIONS = [
         { id: 'photo', label: 'Photo or Video', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>, action: () => photoInputRef.current?.click() },
         { id: 'file', label: 'File', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>, action: () => fileInputRef.current?.click() },
-        { id: 'camera', label: 'Camera', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>, action: () => cameraInputRef.current?.click() },
+        { id: 'camera', label: 'Camera', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>, action: () => { setShowAttachment(false); setShowCamera(true); } },
         { id: 'poll', label: 'Poll', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>, action: () => { setShowAttachment(false); setShowPoll(true); } },
         { id: 'location', label: 'Location', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>, action: shareLocation },
     ];
@@ -565,7 +699,6 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
             {/* Hidden file inputs */}
             <input ref={photoInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={e => handleFileSelected(e, 'media')} />
             <input ref={fileInputRef} type="file" className="hidden" onChange={e => handleFileSelected(e, 'file')} />
-            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFileSelected(e, 'media')} />
 
             {/* ── Header ───────────────────────────────────────────────────── */}
             <div className="px-6 py-3 border-b border-border bg-bg-secondary flex justify-between items-center shadow-sm z-10">
@@ -835,6 +968,24 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
             {/* Poll Modal */}
             <AnimatePresence>
                 {showPoll && <PollModal onClose={() => setShowPoll(false)} onSubmit={handlePollSubmit} />}
+            </AnimatePresence>
+
+            {/* Camera Modal */}
+            <AnimatePresence>
+                {showCamera && (
+                    <CameraModal
+                        onClose={() => setShowCamera(false)}
+                        onCapture={(dataUrl) => {
+                            // Convert data URL to blob URL for consistency with pendingMedia
+                            fetch(dataUrl)
+                                .then(r => r.blob())
+                                .then(blob => {
+                                    const url = URL.createObjectURL(blob);
+                                    setPendingMedia({ type: 'image', url, name: 'camera-photo.jpg', size: formatBytes(blob.size) });
+                                });
+                        }}
+                    />
+                )}
             </AnimatePresence>
         </div>
     );

@@ -240,7 +240,7 @@ const composeMenuItems = [
 ];
 
 export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }: Props) {
-    const { onlineUsers, currentUser, userProfile, requestUsers, connected, currentRoom, roomMembers, setSelectedUserProfile } = useChatContext();
+    const { onlineUsers, currentUser, userProfile, requestUsers, connected, joinedRooms, leaveRoom, setSelectedUserProfile } = useChatContext();
     const [searchQuery, setSearchQuery] = useState('');
     const [showComposeMenu, setShowComposeMenu] = useState(false);
     const [showNewGroup, setShowNewGroup] = useState(false);
@@ -283,6 +283,7 @@ export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }
             type: 'global',
             name: 'Global Chat',
             subtext: 'Public channel',
+            leave: null as string | null,
             icon: (
                 <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center text-bg-primary">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -292,19 +293,21 @@ export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }
             )
         });
 
-        if (currentRoom) {
+        // Show ALL joined rooms (multi-room support)
+        joinedRooms.forEach(room => {
             items.push({
-                id: `room:${currentRoom}`,
+                id: `room:${room}`,
                 type: 'room',
-                name: `#${currentRoom}`,
-                subtext: `${roomMembers.length} members`,
+                name: `#${room}`,
+                subtext: 'Group room',
+                leave: room,
                 icon: (
                     <div className="w-12 h-12 rounded-full bg-bg-card border border-border flex items-center justify-center text-text-primary font-bold text-lg">
                         #
                     </div>
                 )
             });
-        }
+        });
 
         const otherUsers = onlineUsers.filter(u => u.id !== currentUser?.id);
         otherUsers.forEach(u => {
@@ -313,6 +316,7 @@ export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }
                 type: 'user',
                 name: u.username,
                 subtext: u.status || 'Online',
+                leave: null as string | null,
                 icon: (
                     <div
                         className="relative z-10 cursor-pointer hover:opacity-80 transition-opacity"
@@ -332,7 +336,7 @@ export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }
         });
 
         return items;
-    }, [currentRoom, roomMembers.length, onlineUsers, currentUser?.id]);
+    }, [joinedRooms, onlineUsers, currentUser?.id]);
 
     const filteredItems = useMemo(() => {
         if (!searchQuery.trim()) return chatItems;
@@ -413,28 +417,44 @@ export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }
             <div className="flex-1 overflow-y-auto">
                 <AnimatePresence>
                     {filteredItems.map(item => (
-                        <motion.button
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             key={item.id}
-                            onClick={() => onSelectChat(item.id, item.name)}
-                            className={`w-full flex items-center gap-3 p-3 transition-colors cursor-pointer text-left
+                            className={`flex items-center gap-1 pr-2 transition-colors
                                 ${activeChat === item.id ? 'bg-bg-hover' : 'hover:bg-bg-input'}
                             `}
                         >
-                            {item.icon}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-baseline mb-0.5">
-                                    <h3 className={`text-base font-semibold truncate ${activeChat === item.id ? 'text-accent' : 'text-text-primary'}`}>
-                                        {item.name}
-                                    </h3>
+                            <button
+                                onClick={() => onSelectChat(item.id, item.name)}
+                                className="flex-1 flex items-center gap-3 p-3 cursor-pointer text-left"
+                            >
+                                {item.icon}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-baseline mb-0.5">
+                                        <h3 className={`text-base font-semibold truncate ${activeChat === item.id ? 'text-accent' : 'text-text-primary'}`}>
+                                            {item.name}
+                                        </h3>
+                                    </div>
+                                    <p className={`text-sm truncate ${activeChat === item.id ? 'text-text-primary' : 'text-text-dim'}`}>
+                                        {item.subtext}
+                                    </p>
                                 </div>
-                                <p className={`text-sm truncate ${activeChat === item.id ? 'text-text-primary' : 'text-text-dim'}`}>
-                                    {item.subtext}
-                                </p>
-                            </div>
-                        </motion.button>
+                            </button>
+                            {/* Leave button for room items */}
+                            {item.leave && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); leaveRoom(item.leave!); }}
+                                    title={`Leave #${item.leave}`}
+                                    className="w-7 h-7 rounded-full flex items-center justify-center text-text-dim hover:text-error hover:bg-error/10 cursor-pointer transition-colors flex-shrink-0"
+                                >
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                </button>
+                            )}
+                        </motion.div>
                     ))}
                     {filteredItems.length === 0 && (
                         <div className="p-8 text-center text-text-dim text-sm">

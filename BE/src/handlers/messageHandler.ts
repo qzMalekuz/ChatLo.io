@@ -6,13 +6,15 @@ import {
     UpdateProfilePayload,
     PrivateChatPayload,
     RoomJoinPayload,
+    RoomLeavePayload,
+    RoomChatPayload,
     TypingPayload,
     RoomMembersPayload,
     VoiceChatPayload,
 } from "../types";
 import { findUserByWs, getPublicUserList } from "../services/userService";
 import { broadcast, sendPrivateMessage } from "../services/chatService";
-import { joinRoom, leaveRoom, broadcastToRoom, getRoomMembers } from "../services/roomService";
+import { joinRoom, leaveRoom, leaveAllRooms, broadcastToRoom, getRoomMembers } from "../services/roomService";
 import { sendError, sendJson } from "../utils/send";
 import { validateText, validateUsername } from "../utils/validate";
 import { isRateLimited } from "../utils/rateLimit";
@@ -71,7 +73,7 @@ export function handleMessage(ws: WebSocket, raw: string): void {
             const { status, avatarUrl } = payload as UpdateProfilePayload;
 
             if (status !== undefined) sender.status = String(status).substring(0, 100);
-            if (avatarUrl !== undefined) sender.avatarUrl = avatarUrl; // note: in prod validate URL/base64 length
+            if (avatarUrl !== undefined) sender.avatarUrl = avatarUrl;
 
             broadcast({
                 type: "USER_UPDATED",
@@ -98,19 +100,28 @@ export function handleMessage(ws: WebSocket, raw: string): void {
         }
 
         case "ROOM_LEAVE": {
-            leaveRoom(sender);
+            const { room } = payload as RoomLeavePayload;
+            if (room) {
+                leaveRoom(sender, room);
+            } else {
+                leaveAllRooms(sender);
+            }
             break;
         }
 
         case "ROOM_CHAT": {
-            const { text } = payload as ChatPayload;
+            const { text, room } = payload as RoomChatPayload;
             const cleanText = validateText(text || "");
             if (!cleanText) return sendError(ws, "Invalid or empty message");
-            if (!sender.room) return sendError(ws, "Join a room first");
 
-            broadcastToRoom(sender.room, {
+            // Use specified room or fall back to primary room
+            const targetRoom = room || sender.room;
+            if (!targetRoom) return sendError(ws, "Join a room first");
+            if (!sender.rooms.includes(targetRoom)) return sendError(ws, "Not a member of that room");
+
+            broadcastToRoom(targetRoom, {
                 type: "ROOM_CHAT",
-                payload: { id: sender.id, username: sender.username, text: cleanText, timestamp },
+                payload: { id: sender.id, username: sender.username, text: cleanText, room: targetRoom, timestamp },
             });
             break;
         }
@@ -172,15 +183,18 @@ export function handleMessage(ws: WebSocket, raw: string): void {
         }
 
         case "ROOM_VOICE": {
-            const { audioData, duration } = payload as VoiceChatPayload;
+            const { audioData, duration, room } = payload as VoiceChatPayload;
             if (!audioData || typeof audioData !== 'string') return sendError(ws, "Missing audio data");
             if (audioData.length > 2_000_000) return sendError(ws, "Audio too large (max ~1.5MB)");
             if (!audioData.startsWith('data:audio')) return sendError(ws, "Invalid audio format");
-            if (!sender.room) return sendError(ws, "Join a room first");
 
-            broadcastToRoom(sender.room, {
+            const targetRoom = room || sender.room;
+            if (!targetRoom) return sendError(ws, "Join a room first");
+            if (!sender.rooms.includes(targetRoom)) return sendError(ws, "Not a member of that room");
+
+            broadcastToRoom(targetRoom, {
                 type: "ROOM_VOICE",
-                payload: { id: sender.id, username: sender.username, audioData, duration: duration ?? 0, timestamp },
+                payload: { id: sender.id, username: sender.username, audioData, duration: duration ?? 0, room: targetRoom, timestamp },
             });
             break;
         }
@@ -200,3 +214,5 @@ export function handleMessage(ws: WebSocket, raw: string): void {
             sendError(ws, "Unknown message type: " + type);
     }
 }
+
+export { leaveAllRooms };
