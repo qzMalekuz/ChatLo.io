@@ -55,7 +55,7 @@ export default function Footer() {
 
         <div className="pt-8">
           <p className="text-base text-[var(--landing-muted)]">
-            Built and designed by <span className="font-semibold text-[var(--landing-text)]">Malekuz Zafar Qadri</span>
+            Built and designed by <span className="font-semibold text-[var(--landing-text)]">Zafar</span>
           </p>
         </div>
       </div>
