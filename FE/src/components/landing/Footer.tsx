@@ -25,10 +25,8 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="relative overflow-hidden bg-[var(--landing-bg)] text-[var(--landing-text)]">
-      <BackgroundBrand />
-
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-16 sm:px-6 lg:px-8">
+    <footer className="bg-[var(--landing-bg)] text-[var(--landing-text)]">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-6 pt-16 sm:px-6 lg:px-8">
         <div className="landing-border border-b pb-12">
           <a href="/" className="inline-flex items-center gap-3" aria-label="ChatLo.io home">
             <BrandLogo textClassName="text-[2rem] text-[var(--landing-text)]" iconClassName="text-[var(--landing-text)]" />
@@ -74,6 +72,8 @@ export default function Footer() {
           </p>
         </div>
       </div>
+
+      <BackgroundBrand />
     </footer>
   );
 }

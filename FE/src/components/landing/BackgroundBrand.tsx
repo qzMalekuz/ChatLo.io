@@ -25,10 +25,13 @@ export default function BackgroundBrand() {
   }, []);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[-0.22em] z-0 overflow-hidden select-none" ref={ref}>
+    <div
+      className="pointer-events-none relative z-0 mt-8 h-[clamp(9rem,18vw,16rem)] w-full overflow-hidden select-none"
+      ref={ref}
+    >
       <p
         style={{ opacity }}
-        className="whitespace-nowrap text-center text-[clamp(5rem,20vw,24rem)] font-extrabold leading-none tracking-[-0.05em] text-[var(--landing-text)] transition-opacity duration-500"
+        className="whitespace-nowrap text-center text-[clamp(6rem,16vw,18rem)] font-extrabold leading-none tracking-[-0.04em] text-[var(--landing-text)] transition-opacity duration-500 translate-y-[16%]"
       >
         ChatLo.io
       </p>
