@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatContext } from './context/ChatContext';
 import UsernameModal from './components/UsernameModal';
@@ -16,13 +16,26 @@ interface AppProps {
 
 export default function App({ theme, onToggleTheme }: AppProps) {
   const { currentUser, connected, currentRoom, joinRoom } = useChatContext();
-  const [usernameSet, setUsernameSet] = useState(false);
+  const [usernameSet, setUsernameSet] = useState(() => {
+    try {
+      return Boolean(window.localStorage.getItem('chatlo_username'));
+    } catch {
+      return false;
+    }
+  });
 
   // 'global', 'room:abc', 'user:123'
   const [activeChatId, setActiveChatId] = useState<string>('global');
   const [showMobileChat, setShowMobileChat] = useState(false);
 
   const [showProfile, setShowProfile] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (!/^Guest_\d+$/.test(currentUser.username)) {
+      setUsernameSet(true);
+    }
+  }, [currentUser]);
 
   const handleSelectChat = (id: string, _name: string) => {
     setActiveChatId(id);

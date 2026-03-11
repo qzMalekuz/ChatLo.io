@@ -9,6 +9,25 @@ function resolveWsUrl() {
     const host = window.location.hostname || 'localhost';
     return `${protocol}//${host}:3000`;
 }
+function getStoredUsername() {
+    try {
+        const value = window.localStorage.getItem('chatlo_username');
+        if (!value) return null;
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        if (!/^[a-zA-Z0-9_]{1,20}$/.test(trimmed)) return null;
+        return trimmed;
+    } catch {
+        return null;
+    }
+}
+function setStoredUsername(username: string) {
+    try {
+        window.localStorage.setItem('chatlo_username', username);
+    } catch {
+        // Ignore storage issues in strict privacy contexts.
+    }
+}
 
 interface ChatState {
     socket: WebSocket | null;
@@ -61,9 +80,14 @@ let msgCounter = 0;
 function nextId() {
     return `msg-${++msgCounter}-${Date.now()}`;
 }
+function isGuestName(name: string) {
+    return /^Guest_\d+$/.test(name);
+}
 
 export function ChatProvider({ children }: { children: ReactNode }) {
     const socketRef = useRef<WebSocket | null>(null);
+    const wsUrlRef = useRef(resolveWsUrl());
+    const preferredUsernameRef = useRef<string | null>(getStoredUsername());
     const [connected, setConnected] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ id: number; username: string } | null>(null);
     const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -145,10 +169,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                             if (prev.find(p => p.id === u.id)) return prev;
                             return [...prev, { id: u.id, username: u.username }];
                         });
-                        setGlobalMessages(prev => [...prev, {
-                            id: nextId(), type: 'SYSTEM', userId: u.id, username: u.username,
-                            text: `${u.username} joined the chat`, timestamp: u.timestamp, isSelf: false,
-                        }]);
+                        if (!isGuestName(u.username)) {
+                            setGlobalMessages(prev => [...prev, {
+                                id: nextId(), type: 'SYSTEM', userId: u.id, username: u.username,
+                                text: `${u.username} joined the chat`, timestamp: u.timestamp, isSelf: false,
+                            }]);
+                        }
                         break;
                     }
 
@@ -184,10 +210,40 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
                     case 'USERNAME_CHANGED': {
                         const u = payload as { id: number; username: string; timestamp: string };
+                        let previousUsername: string | undefined;
+
                         if (u.id === me?.id) {
                             setCurrentUser({ id: u.id, username: u.username });
                         }
-                        setOnlineUsers(prev => prev.map(p => p.id === u.id ? { ...p, username: u.username } : p));
+
+                        setOnlineUsers(prev => prev.map(p => {
+                            if (p.id === u.id) {
+                                previousUsername = p.username;
+                                return { ...p, username: u.username };
+                            }
+                            return p;
+                        }));
+
+                        if (previousUsername && isGuestName(previousUsername) && !isGuestName(u.username)) {
+                            setGlobalMessages(prev => {
+                                const withoutGuestJoin = prev.filter(
+                                    (m) => !(m.type === 'SYSTEM' && m.userId === u.id && m.text === `${previousUsername} joined the chat`),
+                                );
+                                const alreadyAdded = withoutGuestJoin.some(
+                                    (m) => m.type === 'SYSTEM' && m.userId === u.id && m.text === `${u.username} joined the chat`,
+                                );
+                                if (alreadyAdded) return withoutGuestJoin;
+                                return [...withoutGuestJoin, {
+                                    id: nextId(),
+                                    type: 'SYSTEM',
+                                    userId: u.id,
+                                    username: u.username,
+                                    text: `${u.username} joined the chat`,
+                                    timestamp: u.timestamp,
+                                    isSelf: false,
+                                }];
+                            });
+                        }
                         break;
                     }
 
@@ -333,7 +389,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         };
     }, [addError]);
 
-    const setUsername = useCallback((username: string) => sendMessage('SET_USERNAME', { username }), [sendMessage]);
+    useEffect(() => {
+        if (!connected || !currentUser) return;
+        const preferred = preferredUsernameRef.current;
+        if (!preferred) return;
+        if (currentUser.username === preferred) return;
+        if (!isGuestName(currentUser.username)) return;
+        sendMessage('SET_USERNAME', { username: preferred });
+    }, [connected, currentUser, sendMessage]);
+
+    const setUsername = useCallback((username: string) => {
+        preferredUsernameRef.current = username;
+        setStoredUsername(username);
+        sendMessage('SET_USERNAME', { username });
+    }, [sendMessage]);
     const sendChat = useCallback((text: string) => {
         sendMessage('CHAT', { text });
         setUserProfile(prev => ({ ...prev, messagesSent: prev.messagesSent + 1 }));
@@ -431,4 +500,3 @@ function extractRoomFromNotification(msg: string): string | null {
     const m = msg.match(/\b(joined|left)\s+(\S+)$/);
     return m ? m[2] : null;
 }
-    const wsUrlRef = useRef(resolveWsUrl());
