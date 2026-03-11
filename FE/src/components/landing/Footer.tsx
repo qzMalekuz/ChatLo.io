@@ -54,13 +54,14 @@ export default function Footer() {
         </div>
 
         <div className="pt-8">
-          <p className="text-base text-[var(--landing-muted)]">
+          <p className="text-xs uppercase tracking-[0.16em] text-[var(--landing-muted)]/80">Credits</p>
+          <p className="mt-3 text-2xl font-medium tracking-tight text-[var(--landing-muted)]">
             Built and designed by{' '}
             <a
               href="https://zafarr.xyz/"
               target="_blank"
               rel="noreferrer"
-              className="font-semibold text-[var(--landing-text)] transition-opacity hover:opacity-80"
+              className="font-semibold text-[var(--landing-text)] underline decoration-[var(--landing-border)] underline-offset-4 transition-opacity hover:opacity-80"
             >
               zafarr.
             </a>

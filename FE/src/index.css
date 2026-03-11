@@ -114,6 +114,13 @@ html {
   color: var(--selection-text);
 }
 
+button::selection,
+a::selection,
+[role="button"]::selection {
+  color: inherit;
+  background: color-mix(in srgb, var(--selection-bg) 75%, transparent);
+}
+
 input:focus,
 textarea:focus {
   outline: none;
