@@ -63,3 +63,10 @@ export function getActiveConnectionsByIp(ip: string): number {
 export function getActiveConnectionsByUsername(username: string): number {
     return connectedUsers.filter((user) => user.username === username).length;
 }
+
+export function isUsernameTaken(username: string, excludeUserId?: number): boolean {
+    return connectedUsers.some((user) => {
+        if (excludeUserId !== undefined && user.id === excludeUserId) return false;
+        return user.username.toLowerCase() === username.toLowerCase();
+    });
+}

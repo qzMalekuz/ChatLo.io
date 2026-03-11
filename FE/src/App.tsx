@@ -16,13 +16,7 @@ interface AppProps {
 
 export default function App({ theme, onToggleTheme }: AppProps) {
   const { currentUser, connected, currentRoom, joinRoom } = useChatContext();
-  const [usernameSet, setUsernameSet] = useState(() => {
-    try {
-      return Boolean(window.localStorage.getItem('chatlo_username'));
-    } catch {
-      return false;
-    }
-  });
+  const [usernameSet, setUsernameSet] = useState(false);
 
   // 'global', 'room:abc', 'user:123'
   const [activeChatId, setActiveChatId] = useState<string>('global');

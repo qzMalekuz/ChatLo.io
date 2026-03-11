@@ -12,7 +12,7 @@ import {
     RoomMembersPayload,
     VoiceChatPayload,
 } from "../types";
-import { findUserByWs, getPublicUserList } from "../services/userService";
+import { findUserByWs, getPublicUserList, isUsernameTaken } from "../services/userService";
 import { broadcast, sendPrivateMessage } from "../services/chatService";
 import { joinRoom, leaveRoom, leaveAllRooms, broadcastToRoom, getRoomMembers } from "../services/roomService";
 import { sendError, sendJson } from "../utils/send";
@@ -82,6 +82,9 @@ export function handleMessage(ws: WebSocket, raw: string): void {
             const { username } = payload as SetUsernamePayload;
             const cleanUsername = validateUsername(username || "");
             if (!cleanUsername) return sendError(ws, "Invalid username (alphanumeric/underscore, max 20 chars)");
+            if (isUsernameTaken(cleanUsername, sender.id)) {
+                return sendError(ws, "Username already in use");
+            }
 
             sender.username = cleanUsername;
 

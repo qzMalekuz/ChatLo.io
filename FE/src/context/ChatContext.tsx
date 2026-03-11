@@ -11,7 +11,7 @@ function resolveWsUrl() {
 }
 function getStoredUsername() {
     try {
-        const value = window.localStorage.getItem('chatlo_username');
+        const value = window.sessionStorage.getItem('chatlo_username');
         if (!value) return null;
         const trimmed = value.trim();
         if (!trimmed) return null;
@@ -23,7 +23,7 @@ function getStoredUsername() {
 }
 function setStoredUsername(username: string) {
     try {
-        window.localStorage.setItem('chatlo_username', username);
+        window.sessionStorage.setItem('chatlo_username', username);
     } catch {
         // Ignore storage issues in strict privacy contexts.
     }
