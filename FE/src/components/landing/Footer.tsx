@@ -1,4 +1,5 @@
 import BrandLogo from './BrandLogo';
+import BackgroundBrand from './BackgroundBrand';
 
 const socialLinks = [
   {
@@ -24,8 +25,10 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[var(--landing-bg)] text-[var(--landing-text)]">
-      <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-16 sm:px-6 lg:px-8">
+    <footer className="relative overflow-hidden bg-[var(--landing-bg)] text-[var(--landing-text)]">
+      <BackgroundBrand />
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-16 sm:px-6 lg:px-8">
         <div className="landing-border border-b pb-12">
           <a href="/" className="inline-flex items-center gap-3" aria-label="ChatLo.io home">
             <BrandLogo textClassName="text-[2rem] text-[var(--landing-text)]" iconClassName="text-[var(--landing-text)]" />
@@ -54,8 +57,8 @@ export default function Footer() {
         </div>
 
         <div className="pt-8">
-          <p className="text-xs uppercase tracking-[0.16em] text-[var(--landing-muted)]/80">Credits</p>
-          <p className="mt-3 text-2xl font-medium tracking-tight text-[var(--landing-muted)]">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--landing-muted)]/80">Credits</p>
+          <p className="mt-3 max-w-3xl text-[clamp(1.15rem,2.4vw,1.75rem)] font-medium leading-tight tracking-tight text-[var(--landing-muted)]">
             Built and designed by{' '}
             <a
               href="https://zafarr.xyz/"
@@ -66,8 +69,8 @@ export default function Footer() {
               zafarr.
             </a>
           </p>
-          <p className="mt-3 text-sm text-[var(--landing-muted)]">
-            © 2026 ChatLo.io - All Rights Reserved
+          <p className="mt-4 text-sm tracking-wide text-[var(--landing-muted)]">
+            © 2026 ChatLo.io all rights reserved
           </p>
         </div>
       </div>
