@@ -93,7 +93,7 @@ cd ../FE && npm install
 ```bash
 # Terminal 1 — Backend
 cd BE
-cp .env.example .env    # first time only
+# create BE/.env if missing (example below in Configuration)
 npm run dev
 
 # Terminal 2 — Frontend
@@ -176,6 +176,39 @@ All backend settings live in `BE/.env`:
 | `MAX_MESSAGE_LENGTH` | `500` | Max characters per message |
 | `MAX_USERNAME_LENGTH` | `20` | Max characters for usernames |
 | `HEARTBEAT_INTERVAL_MS` | `30000` | Ping interval (ms) |
+| `MAX_RAW_MESSAGE_BYTES` | `2100000` | Max incoming raw message size before parse |
+| `MAX_STATUS_LENGTH` | `100` | Max characters for profile status |
+| `MAX_ROOM_NAME_LENGTH` | `32` | Max room name length |
+| `WS_MAX_CONNECTIONS_PER_IP` | `25` | Simultaneous WebSocket connections per IP |
+| `WS_MAX_CONNECTIONS_PER_USER` | `3` | Simultaneous sessions for one authenticated username |
+| `WS_MAX_PAYLOAD_BYTES` | `2000000` | WebSocket frame payload limit (`ws` server) |
+| `WS_ALLOWED_ORIGINS` | `` | Comma-separated allowed WS origins; empty allows all |
+
+Example `BE/.env`:
+
+```env
+PORT=3000
+JWT_SECRET=default-secret
+AUTH_ENABLED=false
+RATE_LIMIT_WINDOW_MS=10000
+RATE_LIMIT_MAX_MESSAGES=10
+MAX_MESSAGE_LENGTH=500
+MAX_USERNAME_LENGTH=20
+HEARTBEAT_INTERVAL_MS=30000
+MAX_RAW_MESSAGE_BYTES=2100000
+MAX_STATUS_LENGTH=100
+MAX_ROOM_NAME_LENGTH=32
+WS_MAX_CONNECTIONS_PER_IP=25
+WS_MAX_CONNECTIONS_PER_USER=3
+WS_MAX_PAYLOAD_BYTES=2000000
+WS_ALLOWED_ORIGINS=
+```
+
+Frontend optional env (in `FE/.env`):
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `VITE_WS_URL` | `ws://localhost:3000` | Overrides auto-detected WebSocket URL |
 
 ---
 
@@ -236,7 +269,7 @@ All messages follow: `{ "type": "...", "payload": { ... } }`
 ### Frontend
 | Technology | Role |
 |-----------|------|
-| **React 18** | UI framework |
+| **React 19** | UI framework |
 | **TypeScript** | Type safety |
 | **Tailwind CSS v4** | Utility-first styling with CSS variable design tokens |
 | **Framer Motion** | Animations, modal transitions, message enter/exit |
@@ -252,7 +285,7 @@ All messages follow: `{ "type": "...", "payload": { ... } }`
 
 | Script | Command | Description |
 |--------|---------|-------------|
-| Dev | `npm run dev` | Start with ts-node watch |
+| Dev | `npm run dev` | Start backend with `ts-node` |
 | Build | `npm run build` | Compile to `dist/` |
 | Start | `npm start` | Run compiled build |
 | Token | `npm run generate-token -- <name>` | Generate JWT |
