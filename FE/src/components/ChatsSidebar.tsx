@@ -28,7 +28,8 @@ function NewGroupModal({ onClose, onSelectChat }: { onClose: () => void; onSelec
     const toggleUser = (id: number) => {
         setSelected(prev => {
             const n = new Set(prev);
-            n.has(id) ? n.delete(id) : n.add(id);
+            if (n.has(id)) n.delete(id);
+            else n.add(id);
             return n;
         });
     };
@@ -336,7 +337,7 @@ export default function ChatsSidebar({ activeChat, onSelectChat, onOpenProfile }
         });
 
         return items;
-    }, [joinedRooms, onlineUsers, currentUser?.id]);
+    }, [joinedRooms, onlineUsers, currentUser?.id, setSelectedUserProfile]);
 
     const filteredItems = useMemo(() => {
         if (!searchQuery.trim()) return chatItems;

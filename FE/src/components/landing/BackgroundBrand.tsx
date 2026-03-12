@@ -9,7 +9,6 @@ export default function BackgroundBrand() {
     if (!target) return;
     if (typeof window === "undefined") return;
     if (typeof window.IntersectionObserver === "undefined") {
-      setOpacity(0.06);
       return;
     }
 
@@ -29,7 +28,6 @@ export default function BackgroundBrand() {
       observer.observe(target);
       return () => observer.disconnect();
     } catch {
-      setOpacity(0.06);
       return;
     }
   }, []);

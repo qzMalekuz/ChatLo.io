@@ -70,6 +70,7 @@ interface ChatState {
 
 const ChatContext = createContext<ChatState | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useChatContext() {
     const ctx = useContext(ChatContext);
     if (!ctx) throw new Error('useChatContext must be inside ChatProvider');
@@ -86,6 +87,7 @@ function isGuestName(name: string) {
 
 export function ChatProvider({ children }: { children: ReactNode }) {
     const socketRef = useRef<WebSocket | null>(null);
+    const [socket, setSocket] = useState<WebSocket | null>(null);
     const wsUrlRef = useRef(resolveWsUrl());
     const preferredUsernameRef = useRef<string | null>(getStoredUsername());
     const [connected, setConnected] = useState(false);
@@ -110,7 +112,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
 
     const currentUserRef = useRef(currentUser);
-    currentUserRef.current = currentUser;
+    useEffect(() => {
+        currentUserRef.current = currentUser;
+    }, [currentUser]);
 
     const addError = useCallback((msg: string) => {
         setErrors(prev => [...prev, msg]);
@@ -134,6 +138,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             if (isCancelled) return;
             ws = new WebSocket(wsUrlRef.current);
             socketRef.current = ws;
+            setSocket(ws);
 
             ws.onopen = () => {
                 if (!isCancelled) setConnected(true);
@@ -386,6 +391,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             isCancelled = true;
             clearTimeout(reconnectTimer);
             ws?.close();
+            socketRef.current = null;
+            setSocket(null);
         };
     }, [addError]);
 
@@ -483,7 +490,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     return (
         <ChatContext.Provider value={{
-            socket: socketRef.current, connected, currentUser, userProfile, onlineUsers,
+            socket, connected, currentUser, userProfile, onlineUsers,
             globalMessages, privateMessages, roomMessages, currentRoom, joinedRooms, roomMembers,
             typingUsers, errors, mutedChats, selectedUserIdForProfile, sendMessage, setUsername, sendChat, sendPrivateChat,
             sendVoiceChat, sendRoomVoice, sendPrivateVoice,

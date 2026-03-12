@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatContext } from './context/ChatContext';
 import UsernameModal from './components/UsernameModal';
@@ -23,15 +23,11 @@ export default function App({ theme, onToggleTheme }: AppProps) {
   const [showMobileChat, setShowMobileChat] = useState(false);
 
   const [showProfile, setShowProfile] = useState(false);
+  const isGuestUsername = currentUser ? /^Guest_\d+$/.test(currentUser.username) : false;
+  const shouldShowUsernameModal = isGuestUsername && !usernameSet;
 
-  useEffect(() => {
-    if (!currentUser) return;
-    if (!/^Guest_\d+$/.test(currentUser.username)) {
-      setUsernameSet(true);
-    }
-  }, [currentUser]);
-
-  const handleSelectChat = (id: string, _name: string) => {
+  const handleSelectChat = (id: string, name: string) => {
+    void name;
     setActiveChatId(id);
     if (id.startsWith('room:')) {
       const roomName = id.replace('room:', '');
@@ -51,7 +47,7 @@ export default function App({ theme, onToggleTheme }: AppProps) {
     );
   }
 
-  if (!usernameSet) {
+  if (shouldShowUsernameModal) {
     return (
       <>
         <UsernameModal onComplete={() => setUsernameSet(true)} />
