@@ -19,15 +19,6 @@
   Deployed with a high-performance decoupled architecture.
 </p>
 
-<p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-tech-stack">Tech Stack</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-project-structure">Project Structure</a> •
-  <a href="#%EF%B8%8F-configuration">Configuration</a>
-</p>
-
 ---
 
 ## Features
