@@ -48,7 +48,7 @@ interface ChatState {
     sendMessage: (type: string, payload: Record<string, unknown>) => void;
     setUsername: (username: string) => void;
     sendChat: (text: string) => void;
-    sendPrivateChat: (toId: number, text: string) => void;
+    sendPrivateChat: (toId: number, text: string, messageId?: string) => void;
     sendVoiceChat: (audioData: string, duration: number) => void;
     sendRoomVoice: (audioData: string, duration: number, room?: string) => void;
     sendPrivateVoice: (toId: number, audioData: string, duration: number) => void;
@@ -253,13 +253,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'PRIVATE_CHAT': {
-                        const p = payload as { from: number; to?: number; username: string; text: string; timestamp: string };
+                        const p = payload as { from: number; to?: number; username: string; text: string; timestamp: string; messageId?: string };
                         const otherId = p.from === me?.id ? p.to : p.from;
                         if (!otherId) break;
                         setPrivateMessages(prev => ({
                             ...prev,
-                            [otherId]: [...(prev[otherId] || []), {
-                                id: nextId(), type: 'PRIVATE_CHAT', userId: p.from, username: p.username,
+                            [otherId]: [
+                                ...(prev[otherId] || []).filter((m) => m.id !== (p.messageId ?? '')),
+                                {
+                                id: p.messageId ?? nextId(), type: 'PRIVATE_CHAT', userId: p.from, username: p.username,
                                 text: p.text, timestamp: p.timestamp, isSelf: p.from === me?.id,
                             }],
                         }));
@@ -325,13 +327,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'PRIVATE_VOICE': {
-                        const v = payload as { from: number; to?: number; username: string; audioData: string; duration: number; timestamp: string };
+                        const v = payload as { from: number; to?: number; username: string; audioData: string; duration: number; timestamp: string; messageId?: string };
                         const otherId = v.from === me?.id ? v.to : v.from;
                         if (!otherId) break;
                         setPrivateMessages(prev => ({
                             ...prev,
-                            [otherId]: [...(prev[otherId] || []), {
-                                id: nextId(), type: 'PRIVATE_CHAT', userId: v.from, username: v.username,
+                            [otherId]: [
+                                ...(prev[otherId] || []).filter((m) => m.id !== (v.messageId ?? '')),
+                                {
+                                id: v.messageId ?? nextId(), type: 'PRIVATE_CHAT', userId: v.from, username: v.username,
                                 text: '🎤 Voice message', timestamp: v.timestamp, isSelf: v.from === me?.id,
                                 audioUrl: v.audioData,
                             }],
@@ -416,8 +420,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         sendMessage('CHAT', { text });
         setUserProfile(prev => ({ ...prev, messagesSent: prev.messagesSent + 1 }));
     }, [sendMessage]);
-    const sendPrivateChat = useCallback((toId: number, text: string) => {
-        sendMessage('PRIVATE_CHAT', { to: toId, text });
+    const sendPrivateChat = useCallback((toId: number, text: string, messageId?: string) => {
+        sendMessage('PRIVATE_CHAT', { to: toId, text, ...(messageId ? { messageId } : {}) });
         setUserProfile(prev => ({ ...prev, messagesSent: prev.messagesSent + 1 }));
     }, [sendMessage]);
 

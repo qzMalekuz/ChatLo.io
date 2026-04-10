@@ -39,6 +39,7 @@ export interface UpdateProfilePayload {
 export interface PrivateChatPayload {
     to?: number;
     text?: string;
+    messageId?: string;
 }
 
 export interface RoomJoinPayload {
@@ -67,4 +68,5 @@ export interface VoiceChatPayload {
     to?: number;         // for private voice
     duration?: number;   // seconds
     room?: string;       // for ROOM_VOICE
+    messageId?: string;
 }

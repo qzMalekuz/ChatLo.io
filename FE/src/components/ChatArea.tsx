@@ -582,8 +582,11 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
         const text = input.trim();
         if (!text) return;
         if (chatMode === 'room' && currentRoom) sendRoomChat(text);
-        else if (chatMode === 'private' && privateChatUserId) sendPrivateChat(privateChatUserId, text);
-        else sendChat(text);
+        else if (chatMode === 'private' && privateChatUserId) {
+            const messageId = `pm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            addLocalMessage(currentChatId, makeLocal({ id: messageId, type: 'PRIVATE_CHAT', text }));
+            sendPrivateChat(privateChatUserId, text, messageId);
+        } else sendChat(text);
         setInput('');
         if (isTypingRef.current) { isTypingRef.current = false; sendTypingStop(); }
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);

@@ -110,12 +110,12 @@ export function handleMessage(ws: WebSocket, raw: string): void {
         }
 
         case "PRIVATE_CHAT": {
-            const { to, text } = payload as PrivateChatPayload;
+            const { to, text, messageId } = payload as PrivateChatPayload;
             const cleanText = validateText(text || "");
             const targetId = asSafeInteger(to);
             if (!targetId || !cleanText) return sendError(ws, "Missing 'to' or invalid message");
 
-            sendPrivateMessage(sender, targetId, cleanText);
+            sendPrivateMessage(sender, targetId, cleanText, undefined, undefined, typeof messageId === "string" ? messageId : undefined);
             break;
         }
 
@@ -233,14 +233,14 @@ export function handleMessage(ws: WebSocket, raw: string): void {
         }
 
         case "PRIVATE_VOICE": {
-            const { to, audioData, duration } = payload as VoiceChatPayload;
+            const { to, audioData, duration, messageId } = payload as VoiceChatPayload;
             if (!audioData || typeof audioData !== 'string') return sendError(ws, "Missing audio data");
             if (audioData.length > 2_000_000) return sendError(ws, "Audio too large (max ~1.5MB)");
             if (!audioData.startsWith('data:audio')) return sendError(ws, "Invalid audio format");
             const targetId = asSafeInteger(to);
             if (!targetId) return sendError(ws, "Missing 'to'");
 
-            sendPrivateMessage(sender, targetId, `🎤 Voice message`, audioData, duration ?? 0);
+            sendPrivateMessage(sender, targetId, `🎤 Voice message`, audioData, duration ?? 0, typeof messageId === "string" ? messageId : undefined);
             break;
         }
 

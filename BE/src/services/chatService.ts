@@ -18,6 +18,7 @@ export function sendPrivateMessage(
     text: string,
     audioData?: string,
     duration?: number,
+    messageId?: string,
 ): void {
     const receiver = findUserById(receiverId);
 
@@ -30,6 +31,7 @@ export function sendPrivateMessage(
         payload: {
             from: sender.id,
             to: receiver.id,
+            ...(messageId ? { messageId } : {}),
             username: sender.username,
             text,
             timestamp: new Date().toISOString(),
