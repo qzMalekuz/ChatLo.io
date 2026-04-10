@@ -35,7 +35,7 @@
 
 ---
 
-## 🚀 Features
+## Features
 
 ### Messaging
 - **Real-Time Global Chat**: Instant broadcasting to all users.
@@ -57,7 +57,7 @@
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **React 19**: Modern UI component library.
@@ -79,7 +79,7 @@
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ChatLo.io uses a **Decoupled Architecture**:
 1. **Frontend (Vercel)**: Deployed at `chat.zafarr.xyz`. It serves static assets globally.
@@ -88,7 +88,7 @@ ChatLo.io uses a **Decoupled Architecture**:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 ChatLo.io/
@@ -103,7 +103,7 @@ ChatLo.io/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Backend (.env)
 - `PORT`: Server port (default 3000)
@@ -115,9 +115,6 @@ ChatLo.io/
 
 ---
 
-<p align="center">
-  Made with ❤️ by Zafar
-</p>
 | Run compiled build |
 | Token | `npm run generate-token -- <name>` | Generate JWT |
 
@@ -130,7 +127,3 @@ ChatLo.io/
 | Preview | `npm run preview` | Preview production build |
 
 ---
-
-<p align="center">
-  Made with ❤️ using WebSockets + React
-</p>
