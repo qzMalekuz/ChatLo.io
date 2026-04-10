@@ -20,11 +20,6 @@
 </p>
 
 <p align="center">
-  <strong>Live Site:</strong> <a href="https://chat.zafarr.xyz">chat.zafarr.xyz</a><br/>
-  <strong>WebSocket API:</strong> <code>wss://chat-api.zafarr.xyz</code>
-</p>
-
-<p align="center">
   <a href="#-features">Features</a> •
   <a href="#-tech-stack">Tech Stack</a> •
   <a href="#-architecture">Architecture</a> •
