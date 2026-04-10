@@ -40,6 +40,9 @@ export interface PrivateChatPayload {
     to?: number;
     text?: string;
     messageId?: string;
+    imageUrl?: string;
+    videoUrl?: string;
+    fileInfo?: { name?: string; size?: string };
 }
 
 export interface RoomJoinPayload {

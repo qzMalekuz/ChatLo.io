@@ -110,12 +110,26 @@ export function handleMessage(ws: WebSocket, raw: string): void {
         }
 
         case "PRIVATE_CHAT": {
-            const { to, text, messageId } = payload as PrivateChatPayload;
-            const cleanText = validateText(text || "");
+            const { to, text, messageId, imageUrl, videoUrl, fileInfo } = payload as PrivateChatPayload;
+            const cleanText = text ? validateText(text) : "";
             const targetId = asSafeInteger(to);
-            if (!targetId || !cleanText) return sendError(ws, "Missing 'to' or invalid message");
+            const hasMedia = typeof imageUrl === "string" || typeof videoUrl === "string" || !!fileInfo;
+            if (!targetId) return sendError(ws, "Missing 'to' or invalid message");
+            if (!hasMedia && !cleanText) return sendError(ws, "Missing 'to' or invalid message");
+            if (imageUrl && !validateAvatarUrl(imageUrl)) return sendError(ws, "Invalid image payload");
+            if (videoUrl && !validateAvatarUrl(videoUrl)) return sendError(ws, "Invalid video payload");
 
-            sendPrivateMessage(sender, targetId, cleanText, undefined, undefined, typeof messageId === "string" ? messageId : undefined);
+            sendPrivateMessage(
+                sender,
+                targetId,
+                cleanText || "",
+                undefined,
+                undefined,
+                typeof messageId === "string" ? messageId : undefined,
+                typeof imageUrl === "string" ? imageUrl : undefined,
+                typeof videoUrl === "string" ? videoUrl : undefined,
+                fileInfo && typeof fileInfo === "object" ? fileInfo : undefined,
+            );
             break;
         }
 

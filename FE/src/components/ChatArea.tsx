@@ -571,7 +571,30 @@ export default function ChatArea({ chatMode, privateChatUserId, onBack }: Props)
                     : makeLocal({ fileInfo: { name: pendingMedia.name, size: pendingMedia.size }, text: `📎 ${pendingMedia.name}` });
             addLocalMessage(currentChatId, msg);
             const placeholder = pendingMedia.type === 'image' ? `📷 Photo` : pendingMedia.type === 'video' ? `🎬 Video` : `📎 ${pendingMedia.name}`;
-            if (chatMode === 'room' && currentRoom) sendRoomChat(placeholder);
+            if (chatMode === 'private' && privateChatUserId && (pendingMedia.type === 'image' || pendingMedia.type === 'video')) {
+                const messageId = `pm-media-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+                fetch(pendingMedia.url)
+                    .then(async (res) => {
+                        const blob = await res.blob();
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const dataUrl = reader.result as string;
+                            sendPrivateChat(
+                                privateChatUserId,
+                                placeholder,
+                                messageId,
+                                pendingMedia.type === 'image' ? { imageUrl: dataUrl } : { videoUrl: dataUrl },
+                            );
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(() => sendPrivateChat(privateChatUserId, placeholder, messageId));
+            } else if (chatMode === 'private' && privateChatUserId && pendingMedia.type === 'file') {
+                const messageId = `pm-file-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+                sendPrivateChat(privateChatUserId, placeholder, messageId, {
+                    fileInfo: { name: pendingMedia.name, size: pendingMedia.size },
+                });
+            } else if (chatMode === 'room' && currentRoom) sendRoomChat(placeholder);
             else if (chatMode === 'private' && privateChatUserId) sendPrivateChat(privateChatUserId, placeholder);
             else sendChat(placeholder);
             setPendingMedia(null);

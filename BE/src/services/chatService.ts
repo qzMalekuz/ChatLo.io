@@ -19,6 +19,9 @@ export function sendPrivateMessage(
     audioData?: string,
     duration?: number,
     messageId?: string,
+    imageUrl?: string,
+    videoUrl?: string,
+    fileInfo?: { name?: string; size?: string },
 ): void {
     const receiver = findUserById(receiverId);
 
@@ -34,6 +37,9 @@ export function sendPrivateMessage(
             ...(messageId ? { messageId } : {}),
             username: sender.username,
             text,
+            ...(imageUrl ? { imageUrl } : {}),
+            ...(videoUrl ? { videoUrl } : {}),
+            ...(fileInfo ? { fileInfo } : {}),
             timestamp: new Date().toISOString(),
             ...(audioData && { audioData, duration: duration ?? 0 }),
         },
