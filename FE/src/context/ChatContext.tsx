@@ -253,8 +253,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'PRIVATE_CHAT': {
-                        const p = payload as { from: number; username: string; text: string; timestamp: string };
-                        const otherId = p.from === me?.id ? 0 : p.from;
+                        const p = payload as { from: number; to?: number; username: string; text: string; timestamp: string };
+                        const otherId = p.from === me?.id ? p.to : p.from;
+                        if (!otherId) break;
                         setPrivateMessages(prev => ({
                             ...prev,
                             [otherId]: [...(prev[otherId] || []), {
@@ -324,8 +325,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     }
 
                     case 'PRIVATE_VOICE': {
-                        const v = payload as { from: number; username: string; audioData: string; duration: number; timestamp: string };
-                        const otherId = v.from === me?.id ? 0 : v.from;
+                        const v = payload as { from: number; to?: number; username: string; audioData: string; duration: number; timestamp: string };
+                        const otherId = v.from === me?.id ? v.to : v.from;
+                        if (!otherId) break;
                         setPrivateMessages(prev => ({
                             ...prev,
                             [otherId]: [...(prev[otherId] || []), {

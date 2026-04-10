@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ChatLo favicon">
+  <rect x="3" y="3" width="58" height="58" rx="18" fill="#0A0E14"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="16.5" fill="none" stroke="#233044" stroke-width="1.5"/>
+  <path
+    d="M22 20h20c4.418 0 8 3.582 8 8v9c0 4.418-3.582 8-8 8h-8.8l-6.871 6.179c-1.282 1.153-3.329.242-3.329-1.482V45h-1c-4.418 0-8-3.582-8-8v-9c0-4.418 3.582-8 8-8Z"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

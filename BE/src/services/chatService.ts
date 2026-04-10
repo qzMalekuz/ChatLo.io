@@ -29,6 +29,7 @@ export function sendPrivateMessage(
         type: audioData ? "PRIVATE_VOICE" : "PRIVATE_CHAT",
         payload: {
             from: sender.id,
+            to: receiver.id,
             username: sender.username,
             text,
             timestamp: new Date().toISOString(),
