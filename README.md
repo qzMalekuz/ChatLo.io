@@ -19,6 +19,27 @@
   Deployed with a high-performance decoupled architecture.
 </p>
 
+
+=======
+<p align="center">
+  <strong>Live Site:</strong> <a href="https://chat.zafarr.xyz">chat.zafarr.xyz</a><br/>
+  <strong>WebSocket API:</strong> <code>wss://chat-api.zafarr.xyz</code>
+</p>
+
+<p align="center">
+  <video src="./assets/chat-screen-recording.mp4" controls muted playsinline width="100%"></video>
+</p>
+
+<p align="center">
+  <a href="#-features">Features</a> •
+  <a href="#-tech-stack">Tech Stack</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-project-structure">Project Structure</a> •
+  <a href="#%EF%B8%8F-configuration">Configuration</a>
+</p>
+
+
 ---
 
 ## Features
