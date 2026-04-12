@@ -84,7 +84,7 @@ export default function App({ theme, onToggleTheme }: AppProps) {
         {/* Left Sidebar (Desktop + Tablet) & Fullscreen on Mobile (when chat hidden) */}
         <div className={`
           ${showMobileChat ? 'hidden md:flex' : 'flex'} 
-          w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-border
+          w-full md:w-80 lg:w-96 shrink-0 border-r border-border
         `}>
           <div className="flex-1 w-full min-w-0">
             <ChatsSidebar
